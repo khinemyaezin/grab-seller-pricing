@@ -23,14 +23,19 @@ export default defineConfig(({ mode }) => {
             abortOnError: true,
           },
         },
-        exposes: { "./Routes": "./src/app/Routes.tsx" },
+        exposes: {
+          "./Routes": "./src/app/Routes.tsx",
+          "./ProductPricingWidget": "./src/features/pricing/components/product-pricing-widget-exposed.tsx",
+          "./ProductPricingEditWidget": "./src/features/pricing/components/product-pricing-edit-widget-exposed.tsx",
+        },
         shared: {
           "react": { singleton: true, requiredVersion: "19.2.4" },
           "react-dom": { singleton: true, requiredVersion: "19.2.4" },
           "react-router": { singleton: true, requiredVersion: "7.18.0" },
           "@tanstack/react-query": { singleton: true, requiredVersion: "5.99.2" },
           "@khinemyaezin/seller-api": { singleton: true },
-          "@khinemyaezin/seller-ui": { singleton: true }
+          "@khinemyaezin/seller-ui": { singleton: true },
+          "react-hook-form": { singleton: true, requiredVersion: "7.74.0" },
         },
       }),
     ],
