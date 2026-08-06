@@ -1,1 +1,1 @@
-{"root":["./src/main.tsx","./src/app/routes.tsx","./src/app/standaloneapp.tsx","./src/features/pricing/pages/pricingpage.tsx"],"version":"5.9.3"}
+{"root":["./src/main.tsx","./src/app/routes.tsx","./src/app/standaloneapp.tsx","./src/features/pricing/components/product-pricing-edit-widget-exposed.tsx","./src/features/pricing/components/product-pricing-edit-widget.tsx","./src/features/pricing/components/product-pricing-widget-exposed.tsx","./src/features/pricing/components/product-pricing-widget.tsx","./src/features/pricing/pages/pricingpage.tsx"],"version":"5.9.3"}
