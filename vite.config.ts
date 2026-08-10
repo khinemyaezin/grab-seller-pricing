@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
         exposes: {
           "./Routes": "./src/app/Routes.tsx",
           "./ProductPricingWidget": "./src/features/pricing/components/product-pricing-widget-exposed.tsx",
-          "./ProductPricingEditWidget": "./src/features/pricing/components/product-pricing-edit-widget-exposed.tsx",
+          "./InlinePricingWidget": "./src/features/pricing/components/inline-pricing-widget-exposed.tsx",
         },
         shared: {
           "react": { singleton: true, requiredVersion: "19.2.4" },
