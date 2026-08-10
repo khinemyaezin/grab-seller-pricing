@@ -1,8 +1,6 @@
 import {
   Field,
   FieldError,
-  FieldGroup,
-  FieldLabel,
 } from "@khinemyaezin/seller-ui/components/field";
 import {
   PricingPayload,
@@ -17,24 +15,31 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
-import { PricingWidgetHandle } from "./product-pricing-widget-exposed";
+import { InlinePricingWidgetHandle } from "./inline-pricing-widget-exposed";
 
-export type ProductPricingWidgetProps = {
+export type InlinePricingWidgetProps = {
   value?: Partial<PricingPayload>;
-  onChange: (value: PricingPayload) => void,
-  ref: Ref<PricingWidgetHandle>
+  onChange: (value: PricingPayload) => void;
+  ref: Ref<InlinePricingWidgetHandle>;
 };
 
 const DEFAULT_CURRENCY = "USD";
 const DEFAULT_VALUE: PricingPayload = {
   sku: "",
   currencyCode: DEFAULT_CURRENCY,
-  amount: 0
-}
+  amount: 0,
+};
 
-const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<PricingPayload, PricingPayload>;
+const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<
+  PricingPayload,
+  PricingPayload
+>;
 
-export default function ProductPricingWidget({ value, onChange, ref }: ProductPricingWidgetProps) {
+export default function InlinePricingWidget({
+  value,
+  onChange,
+  ref,
+}: InlinePricingWidgetProps) {
   const form = useForm<PricingPayload>({
     defaultValues: DEFAULT_VALUE,
     resolver: zodResolver(schema),
@@ -82,27 +87,26 @@ export default function ProductPricingWidget({ value, onChange, ref }: ProductPr
     };
   }, [form]);
 
+  const currencyCode = watch("currencyCode");
+  const sku = watch("sku");
+
   return (
-    <FieldGroup className="grid gap-4">
-      <div className="grid gap-3">
-        <Field data-invalid={!!errors.amount}>
-          <FieldLabel htmlFor={`pricing-amount`}>Amount</FieldLabel>
-          <InputGroup>
-            <InputGroupInput
-              id={`pricing-amount`}
-              type="number"
-              disabled={!watch("sku")}
-              {...register("amount", { valueAsNumber: true })}
-            />
-            <InputGroupAddon align="inline-end">
-              {DEFAULT_CURRENCY}
-            </InputGroupAddon>
-          </InputGroup>
-          {errors.amount && (
-            <FieldError errors={[errors.amount]} />
-          )}
-        </Field>
-      </div>
-    </FieldGroup>
+    <Field data-invalid={!!errors.amount} className="gap-1">
+      <input type="hidden" {...register("sku")} />
+      <input type="hidden" {...register("currencyCode")} />
+      <InputGroup>
+        <InputGroupInput
+          id="inline-pricing-amount"
+          type="number"
+          min={0}
+          step="any"
+          disabled={!sku}
+          aria-label="Price amount"
+          {...register("amount", { valueAsNumber: true })}
+        />
+        <InputGroupAddon align="inline-end">{currencyCode}</InputGroupAddon>
+      </InputGroup>
+      {errors.amount ? <FieldError errors={[errors.amount]} /> : null}
+    </Field>
   );
 }
