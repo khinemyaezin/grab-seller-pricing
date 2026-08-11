@@ -91,7 +91,6 @@ export default function ProductPricingWidget({ value, onChange, ref }: ProductPr
             <InputGroupInput
               id={`pricing-amount`}
               type="number"
-              disabled={!watch("sku")}
               {...register("amount", { valueAsNumber: true })}
             />
             <InputGroupAddon align="inline-end">
