@@ -100,7 +100,6 @@ export default function InlinePricingWidget({
           type="number"
           min={0}
           step="any"
-          disabled={!sku}
           aria-label="Price amount"
           {...register("amount", { valueAsNumber: true })}
         />
