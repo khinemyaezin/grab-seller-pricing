@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
 import { PricingWidgetHandle } from "./product-pricing-widget-exposed";
+import { useDebounce } from "@khinemyaezin/seller-ui";
 
 export type ProductPricingWidgetProps = {
   value?: Partial<PricingPayload>;
@@ -55,12 +56,16 @@ export default function ProductPricingWidget({ value, onChange, ref }: ProductPr
     }
   }, [form, onChange]);
 
+  const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
+
   useEffect(() => {
-    const subscription = watch(() => {
-      emitChange();
+    const subscription = watch((value, { name }) => {
+      if (name) {
+        debouncedEmitChange();
+      }
     });
     return () => subscription.unsubscribe();
-  }, [watch, emitChange]);
+  }, [watch, debouncedEmitChange]);
 
   useImperativeHandle(ref, () => {
     return {

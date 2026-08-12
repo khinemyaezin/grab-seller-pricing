@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { EntryLinkProvider, PlatformProvider } from "@khinemyaezin/seller-ui";
 import { type HateoasLink } from "@khinemyaezin/seller-api";
 import {
@@ -22,12 +22,16 @@ export type PricingWidgetHandle = {
   }>;
 };
 
-function resolveHydrateSnapshot(
+function resolveMountSnapshot(
   events: PlatformEvents,
   instanceId: string,
-): PricingPayload | undefined {
-  const snap = events.getSnapshot("extension:pricing:hydrate:v1", instanceId);
-  return snap?.payload as PricingPayload | undefined;
+): Partial<PricingPayload> | undefined {
+  const own = events.getSnapshot("extension:pricing:updated:v1", instanceId)
+    ?.payload as PricingPayload | undefined;
+  const identity = events.getSnapshot("extension:pricing:hydrate:v1", instanceId)
+    ?.payload as Partial<PricingPayload> | undefined;
+  if (!own && !identity) return undefined;
+  return { ...own, ...identity };
 }
 
 export default function ProductPricingWidgetExposed({
@@ -39,16 +43,16 @@ export default function ProductPricingWidgetExposed({
 }: ProductPricingWidgetExposedProps) {
   const events = platform?.events;
   const ref = useRef<PricingWidgetHandle>(null);
-  const producerId = instanceId;
+  const producerId = useId();
   const [payload, setPayload] = useState<Partial<PricingPayload>>((context as PricingPayload));
 
   useEffect(() => {
     if (!instanceId) return;
     if (!events) return;
 
-    const snapshot = resolveHydrateSnapshot(events, instanceId);
+    const snapshot = resolveMountSnapshot(events, instanceId);
     if (snapshot) {
-      setPayload(snapshot);
+      setPayload((prev) => ({ ...prev, ...snapshot }));
     }
 
     const unsubs = [
@@ -73,10 +77,21 @@ export default function ProductPricingWidgetExposed({
         if (msg.producerId === producerId) return;
         if (msg.instanceId && msg.instanceId !== instanceId) return;
         if (msg.slotId && msg.slotId !== slotId) return;
+        if (!msg.payload) return;
 
-        if (msg.payload) {
-          setPayload(msg.payload as Partial<PricingPayload>);
-        }
+        setPayload((prev) => ({
+          ...prev,
+          ...(msg.payload as Partial<PricingPayload>),
+        }));
+      }),
+      events.subscribe("extension:pricing:updated:v1", (msg) => {
+        if (msg.producerId === producerId) return;
+        if (msg.instanceId !== instanceId) return;
+        if (!msg.payload) return;
+        setPayload((prev) => ({
+          ...prev,
+          ...(msg.payload as Partial<PricingPayload>),
+        }));
       }),
     ];
 

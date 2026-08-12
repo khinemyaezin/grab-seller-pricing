@@ -61,8 +61,10 @@ export default function InlinePricingWidget({
   }, [form, onChange]);
 
   useEffect(() => {
-    const subscription = watch(() => {
-      emitChange();
+    const subscription = watch((value, { name }) => {
+      if (name) {
+        emitChange();
+      }
     });
     return () => subscription.unsubscribe();
   }, [watch, emitChange]);
