@@ -19,18 +19,18 @@ export type InlinePricingWidgetHandle = {
 
 function resolveMountSnapshot(
   events: PlatformEvents,
-  instanceId: string,
+  groupId: string,
 ): Partial<PricingPayload> | undefined {
-  const own = events.getSnapshot("extension:pricing:updated:v1", instanceId)
+  const own = events.getSnapshot("extension:pricing:updated:v1", groupId)
     ?.payload as PricingPayload | undefined;
-  const identity = events.getSnapshot("extension:pricing:hydrate:v1", instanceId)
+  const identity = events.getSnapshot("extension:pricing:hydrate:v1", groupId)
     ?.payload as Partial<PricingPayload> | undefined;
   if (!own && !identity) return undefined;
   return { ...own, ...identity };
 }
 
 export default function InlinePricingWidgetExposed({
-  instanceId,
+  groupId,
   slotId = PRODUCT_EXTENSION_SLOTS.CREATE_PRICING_INLINE,
   context,
   platform,
@@ -38,14 +38,14 @@ export default function InlinePricingWidgetExposed({
 }: InlinePricingWidgetExposedProps) {
   const events = platform?.events;
   const ref = useRef<InlinePricingWidgetHandle>(null);
-  const producerId = instanceId;
+  const producerId = groupId;
   const [payload, setPayload] = useState<Partial<PricingPayload>>((context as PricingPayload));
 
   useEffect(() => {
-    if (!instanceId) return;
+    if (!groupId) return;
     if (!events) return;
 
-    const snapshot = resolveMountSnapshot(events, instanceId);
+    const snapshot = resolveMountSnapshot(events, groupId);
     if (snapshot) {
       setPayload((prev) => ({ ...prev, ...snapshot }));
     }
@@ -53,14 +53,14 @@ export default function InlinePricingWidgetExposed({
     const unsubs = [
       events.subscribe("extension:validate:v1", async (msg) => {
         if (msg.producerId === producerId) return;
-        if (msg.instanceId !== instanceId) return;
+        if (msg.groupId !== groupId) return;
         if (msg.slotId && msg.slotId !== slotId) return;
 
         const payload = await ref.current?.validate();
 
         events.emit("extension:validated:v1", {
           producerId,
-          instanceId,
+          groupId,
           slotId,
           valid: payload ? !payload.errors : false,
           ...(payload?.errors
@@ -70,7 +70,7 @@ export default function InlinePricingWidgetExposed({
       }),
       events.subscribe("extension:pricing:hydrate:v1", (msg) => {
         if (msg.producerId === producerId) return;
-        if (msg.instanceId && msg.instanceId !== instanceId) return;
+        if (msg.groupId && msg.groupId !== groupId) return;
         if (msg.slotId && msg.slotId !== slotId) return;
         if (!msg.payload) return;
 
@@ -81,7 +81,7 @@ export default function InlinePricingWidgetExposed({
       }),
       events.subscribe("extension:pricing:updated:v1", (msg) => {
         if (msg.producerId === producerId) return;
-        if (msg.instanceId !== instanceId) return;
+        if (msg.groupId !== groupId) return;
         if (!msg.payload) return;
         setPayload((prev) => ({
           ...prev,
@@ -91,18 +91,18 @@ export default function InlinePricingWidgetExposed({
     ];
 
     return () => unsubs.forEach((unsub) => unsub());
-  }, [events, instanceId, slotId, producerId]);
+  }, [events, groupId, slotId, producerId]);
 
   const onChange = (payload: PricingPayload) => {
     events?.setState("extension:pricing:updated:v1", {
       producerId,
-      instanceId,
+      groupId,
       slotId,
       payload,
     });
   };
 
-  if (!entryLink || !instanceId) return null;
+  if (!entryLink || !groupId) return null;
 
   return (
     <PlatformProvider platform={platform}>
