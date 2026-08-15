@@ -1,37 +1,41 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { EntryLinkProvider, PlatformProvider } from "@khinemyaezin/seller-ui";
-import { type HateoasLink } from "@khinemyaezin/seller-api";
 import {
+  PricingCreateContext,
   PricingPayload,
   PRODUCT_EXTENSION_SLOTS,
   type ExtensionMountProps,
   type PlatformEvents,
-  type SellerPlatform,
 } from "@khinemyaezin/seller-contracts";
 import ProductPricingWidget from "./product-pricing-widget";
 
-export type ProductPricingWidgetExposedProps = ExtensionMountProps & {
-  entryLink: HateoasLink;
-  platform?: SellerPlatform;
-};
+export type ProductPricingWidgetExposedProps = ExtensionMountProps;
 
 export type PricingWidgetHandle = {
   validate: () => Promise<{
     value?: PricingPayload;
     errors?: Record<string, string>;
   }>;
+  getValues: () => PricingPayload;
 };
+
+function mergeFromHydrate<T extends object>(
+  prev: T | undefined,
+  current: T | undefined,
+  context: Partial<T> | undefined,
+): T {
+  return { ...prev, ...current, ...context } as T;
+}
 
 function resolveMountSnapshot(
   events: PlatformEvents,
   groupId: string,
-): Partial<PricingPayload> | undefined {
-  const own = events.getSnapshot("extension:pricing:updated:v1", groupId)
+) {
+  const payload = events.getSnapshot("extension:pricing:new:updated:v1", groupId)
     ?.payload as PricingPayload | undefined;
-  const identity = events.getSnapshot("extension:pricing:hydrate:v1", groupId)
-    ?.payload as Partial<PricingPayload> | undefined;
-  if (!own && !identity) return undefined;
-  return { ...own, ...identity };
+  const context = events.getSnapshot("extension:pricing:new:hydrate:v1", groupId)
+    ?.payload as PricingCreateContext | undefined;
+  return { payload, context };
 }
 
 export default function ProductPricingWidgetExposed({
@@ -44,15 +48,20 @@ export default function ProductPricingWidgetExposed({
   const events = platform?.events;
   const ref = useRef<PricingWidgetHandle>(null);
   const producerId = useId();
-  const [payload, setPayload] = useState<Partial<PricingPayload>>((context as PricingPayload));
+  const [payload, setPayload] = useState<PricingPayload>();
+  const [ctx, setContext] = useState<PricingCreateContext>();
 
   useEffect(() => {
     if (!groupId) return;
     if (!events) return;
 
     const snapshot = resolveMountSnapshot(events, groupId);
-    if (snapshot) {
-      setPayload((prev) => ({ ...prev, ...snapshot }));
+    const current = ref.current?.getValues();
+    if (snapshot.payload || snapshot.context) {
+      setPayload((prev) => mergeFromHydrate(prev, current, { ...snapshot.payload, ...snapshot.context }));
+    }
+    if (snapshot.context) {
+      setContext((prev) => ({ ...prev, ...snapshot.context } as PricingCreateContext));
     }
 
     const unsubs = [
@@ -61,37 +70,33 @@ export default function ProductPricingWidgetExposed({
         if (msg.groupId !== groupId) return;
         if (msg.slotId && msg.slotId !== slotId) return;
 
-        const payload = await ref.current?.validate();
+        const validatedPayload = await ref.current?.validate();
 
         events.emit("extension:validated:v1", {
           producerId,
           groupId,
           slotId,
-          valid: payload ? !payload.errors : false,
-          ...(payload?.errors
-            ? { errors: payload.errors, payload: undefined }
-            : { payload: payload?.value }),
+          valid: validatedPayload ? !validatedPayload.errors : false,
+          ...(validatedPayload?.errors
+            ? { errors: validatedPayload.errors, payload: undefined }
+            : { payload: validatedPayload?.value }),
         });
       }),
-      events.subscribe("extension:pricing:hydrate:v1", (msg) => {
+      events.subscribe("extension:pricing:new:hydrate:v1", (msg) => {
         if (msg.producerId === producerId) return;
         if (msg.groupId && msg.groupId !== groupId) return;
         if (msg.slotId && msg.slotId !== slotId) return;
         if (!msg.payload) return;
 
-        setPayload((prev) => ({
-          ...prev,
-          ...(msg.payload as Partial<PricingPayload>),
-        }));
+        setContext(msg.payload);
+        setPayload((prev) => mergeFromHydrate(prev, ref.current?.getValues(), msg.payload));
       }),
-      events.subscribe("extension:pricing:updated:v1", (msg) => {
+      events.subscribe("extension:pricing:new:updated:v1", (msg) => {
         if (msg.producerId === producerId) return;
         if (msg.groupId !== groupId) return;
         if (!msg.payload) return;
-        setPayload((prev) => ({
-          ...prev,
-          ...(msg.payload as Partial<PricingPayload>),
-        }));
+
+        setPayload(msg.payload);
       }),
     ];
 
@@ -99,7 +104,7 @@ export default function ProductPricingWidgetExposed({
   }, [events, groupId, slotId, producerId]);
 
   const onChange = (payload: PricingPayload) => {
-    events?.setState("extension:pricing:updated:v1", {
+    events?.setState("extension:pricing:new:updated:v1", {
       producerId,
       groupId,
       slotId,
@@ -114,6 +119,7 @@ export default function ProductPricingWidgetExposed({
       <EntryLinkProvider link={entryLink}>
         <ProductPricingWidget
           ref={ref}
+          context={ctx}
           value={payload}
           onChange={onChange}
         />

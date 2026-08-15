@@ -5,6 +5,7 @@ import {
   FieldLabel,
 } from "@khinemyaezin/seller-ui/components/field";
 import {
+  PricingCreateContext,
   PricingPayload,
   PricingPayloadSchema,
 } from "@khinemyaezin/seller-contracts";
@@ -21,7 +22,8 @@ import { PricingWidgetHandle } from "./product-pricing-widget-exposed";
 import { useDebounce } from "@khinemyaezin/seller-ui";
 
 export type ProductPricingWidgetProps = {
-  value?: Partial<PricingPayload>;
+  context?: PricingCreateContext;
+  value?: PricingPayload;
   onChange: (value: PricingPayload) => void,
   ref: Ref<PricingWidgetHandle>
 };
@@ -35,7 +37,7 @@ const DEFAULT_VALUE: PricingPayload = {
 
 const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<PricingPayload, PricingPayload>;
 
-export default function ProductPricingWidget({ value, onChange, ref }: ProductPricingWidgetProps) {
+export default function ProductPricingWidget({ context, value, onChange, ref }: ProductPricingWidgetProps) {
   const form = useForm<PricingPayload>({
     defaultValues: DEFAULT_VALUE,
     resolver: zodResolver(schema),
@@ -44,16 +46,12 @@ export default function ProductPricingWidget({ value, onChange, ref }: ProductPr
   const { reset, register, watch, formState: { errors } } = form;
 
   useEffect(() => {
-    if (value) {
-      reset({ ...DEFAULT_VALUE, ...value })
-    }
-  }, [value]);
+    reset({ ...form.getValues(), ...value, ...context });
+    form.trigger();
+  }, [context, value]);
 
   const emitChange = useCallback(async () => {
-    const isValid = await form.trigger();
-    if (isValid) {
-      onChange(form.getValues());
-    }
+    onChange(form.getValues());
   }, [form, onChange]);
 
   const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
@@ -84,6 +82,7 @@ export default function ProductPricingWidget({ value, onChange, ref }: ProductPr
 
         return { errors: formErrors };
       },
+      getValues: () => form.getValues(),
     };
   }, [form]);
 
