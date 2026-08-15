@@ -3,6 +3,7 @@ import {
   FieldError,
 } from "@khinemyaezin/seller-ui/components/field";
 import {
+  PricingCreateContext,
   PricingPayload,
   PricingPayloadSchema,
 } from "@khinemyaezin/seller-contracts";
@@ -16,9 +17,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
 import { InlinePricingWidgetHandle } from "./inline-pricing-widget-exposed";
+import { useDebounce } from "@khinemyaezin/seller-ui";
 
 export type InlinePricingWidgetProps = {
-  value?: Partial<PricingPayload>;
+  context?: PricingCreateContext;
+  value?: PricingPayload;
   onChange: (value: PricingPayload) => void;
   ref: Ref<InlinePricingWidgetHandle>;
 };
@@ -36,6 +39,7 @@ const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<
 >;
 
 export default function InlinePricingWidget({
+  context,
   value,
   onChange,
   ref,
@@ -48,26 +52,24 @@ export default function InlinePricingWidget({
   const { reset, register, watch, formState: { errors } } = form;
 
   useEffect(() => {
-    if (value) {
-      reset({ ...DEFAULT_VALUE, ...value })
-    }
-  }, [value]);
+    reset({ ...form.getValues(), ...value, ...context });
+    form.trigger();
+  }, [context, value]);
 
   const emitChange = useCallback(async () => {
-    const isValid = await form.trigger();
-    if (isValid) {
-      onChange(form.getValues());
-    }
+    onChange(form.getValues());
   }, [form, onChange]);
+
+  const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
 
   useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name) {
-        emitChange();
+        debouncedEmitChange();
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, emitChange]);
+  }, [watch, debouncedEmitChange]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -86,11 +88,9 @@ export default function InlinePricingWidget({
 
         return { errors: formErrors };
       },
+      getValues: () => form.getValues(),
     };
   }, [form]);
-
-  const currencyCode = watch("currencyCode");
-  const sku = watch("sku");
 
   return (
     <Field data-invalid={!!errors.amount} className="gap-1">
@@ -105,7 +105,7 @@ export default function InlinePricingWidget({
           aria-label="Price amount"
           {...register("amount", { valueAsNumber: true })}
         />
-        <InputGroupAddon align="inline-end">{currencyCode}</InputGroupAddon>
+        <InputGroupAddon align="inline-end">{watch("currencyCode")}</InputGroupAddon>
       </InputGroup>
       {errors.amount ? <FieldError errors={[errors.amount]} /> : null}
     </Field>
