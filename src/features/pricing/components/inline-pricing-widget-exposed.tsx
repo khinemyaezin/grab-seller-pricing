@@ -1,11 +1,9 @@
-import { useEffect, useId, useRef, useState } from "react";
 import { EntryLinkProvider, PlatformProvider } from "@khinemyaezin/seller-ui";
 import {
   PricingCreateContext,
   PricingPayload,
   PRODUCT_EXTENSION_SLOTS,
   type ExtensionMountProps,
-  type PlatformEvents,
 } from "@khinemyaezin/seller-contracts";
 import InlinePricingWidget from "./inline-pricing-widget";
 import { usePricingNewSlot } from "../hooks/use-pricing-new-slot";
