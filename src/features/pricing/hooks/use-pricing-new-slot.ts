@@ -1,6 +1,5 @@
 import { PricingCreateContext, PricingPayload, SellerPlatform } from "@khinemyaezin/seller-contracts";
 import { useRef, useId, useState, useEffect } from "react";
-import { PricingWidgetHandle } from "../components/product-pricing-widget-exposed";
 
 export type UsePricingNewSlotProps = {
     platform?: SellerPlatform;
@@ -16,6 +15,14 @@ function mergeFromHydrate<T extends object>(
 ): T {
     return { ...prev, ...current, ...context } as T;
 }
+
+export type PricingWidgetHandle = {
+    validate: () => Promise<{
+        value?: PricingPayload;
+        errors?: Record<string, string>;
+    }>;
+    getValues: () => PricingPayload;
+};
 
 export function usePricingNewSlot({ platform, groupId, slotId, initialContext }: UsePricingNewSlotProps) {
     const events = platform?.events;

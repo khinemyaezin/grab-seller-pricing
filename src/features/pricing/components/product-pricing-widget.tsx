@@ -18,8 +18,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
-import { PricingWidgetHandle } from "./product-pricing-widget-exposed";
 import { useDebounce } from "@khinemyaezin/seller-ui";
+import { PricingWidgetHandle } from "../hooks/use-pricing-new-slot";
 
 export type ProductPricingWidgetProps = {
   context?: PricingCreateContext;
