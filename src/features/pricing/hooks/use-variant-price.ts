@@ -4,7 +4,7 @@ import {
   priceSetService,
 } from "../api/price-set-service";
 import type { PriceSetResponse, UpdatePriceRequest } from "../types";
-import { usePricingLink, usePricingRoot } from "./use-pricing-root";
+import { usePricingLink } from "./use-pricing-root";
 
 export function useVariantPriceLinkGet(link?: HateoasLink, variantId?: string) {
   return useQuery({
@@ -27,19 +27,20 @@ export function usePriceSetLinkGet(getPriceSetLink?: HateoasLink, variantId?: st
   });
 }
 
-export function useVariantPriceSet(variantId: string) {
-  const root = usePricingRoot();
+export function useVariantPriceSet(variantId?: string) {
   const listLink = usePricingLink("listVariantPriceLinks");
   const priceSetByVariantId = useVariantPriceLinkGet(listLink, variantId);
   const getPriceSetLink = resolveLink(priceSetByVariantId?.data?._links, "get-price-set");
   const priceSetQuery = usePriceSetLinkGet(getPriceSetLink, variantId);
-  const updatePriceLink = resolveLink(priceSetByVariantId.data?._links, "update-price")
+  const updatePriceLink = resolveLink(priceSetByVariantId.data?._links, "update-price");
 
-  // multiple prices updates not supported yet
   const price = priceSetQuery.data?.prices?.[0];
 
   return {
     price,
+    priceSetId: priceSetQuery.data?.id ?? priceSetByVariantId.data?.priceSetId,
+    sku: priceSetByVariantId.data?.sku,
+    isLoading: priceSetByVariantId.isLoading || priceSetQuery.isLoading,
     updatePriceLink,
     refetch: priceSetQuery.refetch,
   };
