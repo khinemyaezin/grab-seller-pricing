@@ -10,14 +10,14 @@ export type InlinePricingEditWidgetExposedProps = ExtensionMountProps;
 
 function InlinePricingEditWidgetBound({
   groupId,
-  slotId,
+  slotId = PRODUCT_EXTENSION_SLOTS.EDIT_PRICING_INLINE,
 }: {
   groupId: string;
   slotId?: string;
 }) {
   const { context, payload, onChange, ref, isLoading } = usePricingEditSlot(
     groupId,
-    slotId ?? PRODUCT_EXTENSION_SLOTS.EDIT_PRICING_INLINE,
+    slotId,
   );
 
   return (

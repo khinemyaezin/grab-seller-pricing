@@ -4,10 +4,11 @@ import type {
   UpdatePriceRequest,
   VariantPriceSetLinksResponse,
 } from "../types";
+import { ListVariantPriceSetLinksRequest } from "../types/pricing.request";
 
 export const priceSetService = {
-  listVariantPriceLinks: (link: HateoasLink, variantIds: string[], headers?: Record<string, string>) =>
-    api.followLink<VariantPriceSetLinksResponse>(link, "GET", undefined, { variantIds: variantIds.join(",") }, headers),
+  listVariantPriceLinks: (link: HateoasLink, request: ListVariantPriceSetLinksRequest, headers?: Record<string, string>) =>
+    api.followLink<VariantPriceSetLinksResponse>(link, "POST", request, headers),
 
   getPriceSet: (link: HateoasLink, headers?: Record<string, string>) =>
     api.followLink<PriceSetResponse>(link, "GET", undefined, undefined, headers),
