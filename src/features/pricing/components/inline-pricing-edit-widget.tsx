@@ -5,6 +5,7 @@ import {
 import {
   PricingEditContext,
   PricingEditPayload,
+  PricingEditPayloadSchema,
   PricingPayloadSchema,
 } from "@khinemyaezin/seller-contracts";
 import {
@@ -34,7 +35,7 @@ const DEFAULT_VALUE: PricingEditPayload = {
   amount: 0,
 };
 
-const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<
+const schema = z.fromJSONSchema(PricingEditPayloadSchema) as z.ZodType<
   PricingEditPayload,
   PricingEditPayload
 >;

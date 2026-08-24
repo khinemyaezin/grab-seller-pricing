@@ -13,3 +13,6 @@ export type UpdatePriceRequest = {
   maxQuantity?: number | null;
   rules?: PriceRuleRequest[] | null;
 };
+export type ListVariantPriceSetLinksRequest = {
+  variantIds: string[];
+}

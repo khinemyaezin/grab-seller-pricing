@@ -11,13 +11,14 @@ import type { PricingEditWidgetHandle } from "../components/pricing-edit-widget"
 export function usePricingEditSlot(
   groupId: string,
   slotId: string = PRODUCT_EXTENSION_SLOTS.EDIT_PRICING,
+  propsContext?: PricingEditContext
 ) {
   const platform = usePlatform();
   const events = platform?.events;
   const ref = useRef<PricingEditWidgetHandle>(null);
   const producerId = useId();
   const [payload, setPayload] = useState<PricingEditPayload>();
-  const [context, setContext] = useState<PricingEditContext>();
+  const [context, setContext] = useState<PricingEditContext | undefined>(propsContext);
   const seededForVariantRef = useRef<string | undefined>(undefined);
 
   const { price, priceSetId, sku, isLoading } = useVariantPriceSet(context?.variantId);
@@ -27,8 +28,8 @@ export function usePricingEditSlot(
 
     const hydrate = events.getSnapshot("extension:pricing:edit:hydrate:v1", groupId);
     const updated = events.getSnapshot("extension:pricing:edit:updated:v1", groupId);
-    if (hydrate?.payload) {
-      setContext((prev) => ({ ...prev, ...hydrate.payload }));
+    if (hydrate?.payload || propsContext) {
+      setContext((prev) => ({ ...prev, ...propsContext, ...hydrate?.payload } as PricingEditContext));
     }
     if (updated?.payload) {
       setPayload((prev) => ({ ...prev, ...updated.payload }));
@@ -58,7 +59,7 @@ export function usePricingEditSlot(
         if (msg.slotId && msg.slotId !== slotId) return;
         if (!msg.payload) return;
 
-        setContext(msg.payload);
+        setContext((prev) => ({ ...prev, ...propsContext, ...msg.payload }));
         setPayload((prev) => {
           const current = ref.current?.getValues() ?? prev;
           return current
