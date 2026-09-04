@@ -5,9 +5,9 @@ import {
   FieldLabel,
 } from "@khinemyaezin/seller-ui/components/field";
 import {
-  PricingCreateContext,
-  PricingPayload,
-  PricingPayloadSchema,
+  PricingEditContext,
+  PricingEditPayload,
+  PricingEditPayloadSchema,
 } from "@khinemyaezin/seller-contracts";
 import {
   InputGroup,
@@ -19,26 +19,43 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
 import { useDebounce } from "@khinemyaezin/seller-ui";
-import { PricingWidgetHandle } from "../hooks/use-pricing-new-slot";
 
-export type ProductPricingWidgetProps = {
-  context?: PricingCreateContext;
-  value?: PricingPayload;
-  onChange: (value: PricingPayload) => void,
-  ref: Ref<PricingWidgetHandle>
+export type PricingEditWidgetHandle = {
+  validate: () => Promise<{
+    value?: PricingEditPayload;
+    errors?: Record<string, string>;
+  }>;
+  getValues: () => PricingEditPayload;
+};
+
+export type PricingEditWidgetProps = {
+  context?: PricingEditContext;
+  value?: PricingEditPayload;
+  onChange: (value: PricingEditPayload) => void;
+  isLoading?: boolean;
+  ref: Ref<PricingEditWidgetHandle>;
 };
 
 const DEFAULT_CURRENCY = "USD";
-const DEFAULT_VALUE: PricingPayload = {
+const DEFAULT_VALUE: PricingEditPayload = {
   sku: "",
   currencyCode: DEFAULT_CURRENCY,
-  amount: 0
-}
+  amount: 0,
+};
 
-const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<PricingPayload, PricingPayload>;
+const schema = z.fromJSONSchema(PricingEditPayloadSchema) as z.ZodType<
+  PricingEditPayload,
+  PricingEditPayload
+>;
 
-export default function ProductPricingWidget({ context, value, onChange, ref }: ProductPricingWidgetProps) {
-  const form = useForm<PricingPayload>({
+export default function PricingEditWidget({
+  context,
+  value,
+  onChange,
+  isLoading,
+  ref,
+}: PricingEditWidgetProps) {
+  const form = useForm<PricingEditPayload>({
     defaultValues: DEFAULT_VALUE,
     resolver: zodResolver(schema),
     mode: "onChange",
@@ -46,8 +63,8 @@ export default function ProductPricingWidget({ context, value, onChange, ref }: 
   const { reset, register, watch, formState: { errors } } = form;
 
   useEffect(() => {
-    reset({ ...form.getValues(), ...value, ...context });
-    form.trigger();
+    reset({ ...form.getValues(), ...value, sku: context?.sku ?? value?.sku ?? "" });
+    void form.trigger();
   }, [context, value]);
 
   const emitChange = useCallback(async () => {
@@ -57,7 +74,7 @@ export default function ProductPricingWidget({ context, value, onChange, ref }: 
   const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
 
   useEffect(() => {
-    const subscription = watch((value, { name }) => {
+    const subscription = watch((_next, { name }) => {
       if (name) {
         debouncedEmitChange();
       }
@@ -86,24 +103,32 @@ export default function ProductPricingWidget({ context, value, onChange, ref }: 
     };
   }, [form]);
 
+  if (isLoading && !value) {
+    return <p className="text-sm text-muted-foreground">Loading price…</p>;
+  }
+
   return (
     <FieldGroup className="grid gap-4">
+      <input type="hidden" {...register("sku")} />
+      <input type="hidden" {...register("currencyCode")} />
+      <input type="hidden" {...register("priceSetId")} />
+      <input type="hidden" {...register("priceId")} />
       <div className="grid gap-3">
         <Field data-invalid={!!errors.amount}>
-          <FieldLabel htmlFor={`pricing-amount`}>Amount</FieldLabel>
+          <FieldLabel htmlFor="pricing-edit-amount">Amount</FieldLabel>
           <InputGroup>
             <InputGroupInput
-              id={`pricing-amount`}
+              id="pricing-edit-amount"
               type="number"
+              min={0}
+              step="any"
               {...register("amount", { valueAsNumber: true })}
             />
             <InputGroupAddon align="inline-end">
-              {DEFAULT_CURRENCY}
+              {watch("currencyCode") || DEFAULT_CURRENCY}
             </InputGroupAddon>
           </InputGroup>
-          {errors.amount && (
-            <FieldError errors={[errors.amount]} />
-          )}
+          {errors.amount ? <FieldError errors={[errors.amount]} /> : null}
         </Field>
       </div>
     </FieldGroup>

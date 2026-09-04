@@ -40,6 +40,8 @@ export type VariantPriceSetLinkResponse = {
 };
 
 export type VariantPriceSetLinksResponse = {
-  _embedded?: VariantPriceSetLinkResponse[],
+  _embedded?: {
+    variantPriceSetLinkResponseList?: VariantPriceSetLinkResponse[]
+  },
   _links?: HalLinks;
 };
