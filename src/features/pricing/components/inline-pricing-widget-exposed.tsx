@@ -4,19 +4,14 @@ import {
   PricingPayload,
   PRODUCT_EXTENSION_SLOTS,
   type ExtensionMountProps,
+  type SlotWidgetHandle,
 } from "@khinemyaezin/seller-contracts";
 import InlinePricingWidget from "./inline-pricing-widget";
 import { usePricingNewSlot } from "../hooks/use-pricing-new-slot";
 
 export type InlinePricingWidgetExposedProps = ExtensionMountProps;
 
-export type InlinePricingWidgetHandle = {
-  validate: () => Promise<{
-    value?: PricingPayload;
-    errors?: Record<string, string>;
-  }>;
-  getValues: () => PricingPayload;
-};
+export type InlinePricingWidgetHandle = SlotWidgetHandle<PricingPayload>;
 
 export default function InlinePricingWidgetExposed({
   groupId,

@@ -8,6 +8,7 @@ import {
   PricingEditContext,
   PricingEditPayload,
   PricingEditPayloadSchema,
+  type SlotWidgetHandle,
 } from "@khinemyaezin/seller-contracts";
 import {
   InputGroup,
@@ -17,19 +18,16 @@ import {
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
+import { Ref, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { useDebounce } from "@khinemyaezin/seller-ui";
 
-export type PricingEditWidgetHandle = {
-  validate: () => Promise<{
-    value?: PricingEditPayload;
-    errors?: Record<string, string>;
-  }>;
-  getValues: () => PricingEditPayload;
-};
+import { useVariantPriceSet } from "../hooks/use-variant-price";
+
+export type PricingEditWidgetHandle = SlotWidgetHandle<PricingEditPayload>;
 
 export type PricingEditWidgetProps = {
   context?: PricingEditContext;
+  initialValue?: PricingEditPayload;
   value?: PricingEditPayload;
   onChange: (value: PricingEditPayload) => void;
   isLoading?: boolean;
@@ -50,26 +48,46 @@ const schema = z.fromJSONSchema(PricingEditPayloadSchema) as z.ZodType<
 
 export default function PricingEditWidget({
   context,
-  value,
+  initialValue,
   onChange,
-  isLoading,
   ref,
 }: PricingEditWidgetProps) {
+  const { price, sku, isLoading } = useVariantPriceSet(context?.variantId);
+
   const form = useForm<PricingEditPayload>({
-    defaultValues: DEFAULT_VALUE,
+    defaultValues: initialValue ?? DEFAULT_VALUE,
     resolver: zodResolver(schema),
     mode: "onChange",
   });
-  const { reset, register, watch, formState: { errors } } = form;
+  const { reset, register, watch, setValue, getValues, formState: { errors } } = form;
+
+  const getBaseline = useCallback((): PricingEditPayload => {
+    if (price) {
+      return {
+        sku: context?.sku ?? sku ?? initialValue?.sku ?? "",
+        currencyCode: price.currencyCode || initialValue?.currencyCode || DEFAULT_CURRENCY,
+        amount: price.amount,
+      };
+    }
+    return initialValue ?? DEFAULT_VALUE;
+  }, [price, sku, context?.sku, initialValue]);
 
   useEffect(() => {
-    reset({ ...form.getValues(), ...value, sku: context?.sku ?? value?.sku ?? "" });
-    void form.trigger();
-  }, [context, value]);
+    if (!price || initialValue) return;
+    const baseline = getBaseline();
+    reset(baseline);
+    onChange(baseline);
+  }, [price, initialValue, getBaseline, reset, onChange]);
+
+  useEffect(() => {
+    if (context?.sku) {
+      setValue("sku", context.sku);
+    }
+  }, [context?.sku, setValue]);
 
   const emitChange = useCallback(async () => {
-    onChange(form.getValues());
-  }, [form, onChange]);
+    onChange(getValues());
+  }, [getValues, onChange]);
 
   const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
 
@@ -87,7 +105,7 @@ export default function PricingEditWidget({
       validate: async () => {
         const isValid = await form.trigger();
         if (isValid) {
-          return { value: form.getValues() };
+          return { value: getValues() };
         }
 
         const formErrors: Record<string, string> = {};
@@ -99,11 +117,16 @@ export default function PricingEditWidget({
 
         return { errors: formErrors };
       },
-      getValues: () => form.getValues(),
+      getValues: () => getValues(),
+      reset: () => {
+        const baseline = getBaseline();
+        reset(baseline);
+        onChange(baseline);
+      },
     };
-  }, [form]);
+  }, [form, reset, getBaseline, onChange, getValues]);
 
-  if (isLoading && !value) {
+  if (isLoading && !price && !initialValue) {
     return <p className="text-sm text-muted-foreground">Loading price…</p>;
   }
 

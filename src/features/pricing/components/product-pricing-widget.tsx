@@ -8,6 +8,7 @@ import {
   PricingCreateContext,
   PricingPayload,
   PricingPayloadSchema,
+  type SlotWidgetHandle,
 } from "@khinemyaezin/seller-contracts";
 import {
   InputGroup,
@@ -19,45 +20,58 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Ref, useCallback, useEffect, useImperativeHandle } from "react";
 import { useDebounce } from "@khinemyaezin/seller-ui";
-import { PricingWidgetHandle } from "../hooks/use-pricing-new-slot";
+
+export type ProductPricingWidgetHandle = SlotWidgetHandle<PricingPayload>;
+export type PricingWidgetHandle = ProductPricingWidgetHandle;
 
 export type ProductPricingWidgetProps = {
   context?: PricingCreateContext;
+  initialValue?: PricingPayload;
   value?: PricingPayload;
-  onChange: (value: PricingPayload) => void,
-  ref: Ref<PricingWidgetHandle>
+  onChange: (value: PricingPayload) => void;
+  ref: Ref<ProductPricingWidgetHandle>;
 };
 
 const DEFAULT_CURRENCY = "USD";
 const DEFAULT_VALUE: PricingPayload = {
   sku: "",
   currencyCode: DEFAULT_CURRENCY,
-  amount: 0
-}
+  amount: 0,
+};
 
-const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<PricingPayload, PricingPayload>;
+const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<
+  PricingPayload,
+  PricingPayload
+>;
 
-export default function ProductPricingWidget({ context, value, onChange, ref }: ProductPricingWidgetProps) {
+export default function ProductPricingWidget({
+  context,
+  initialValue,
+  value,
+  onChange,
+  ref,
+}: ProductPricingWidgetProps) {
   const form = useForm<PricingPayload>({
-    defaultValues: DEFAULT_VALUE,
+    defaultValues: initialValue ?? value ?? DEFAULT_VALUE,
     resolver: zodResolver(schema),
     mode: "onChange",
   });
-  const { reset, register, watch, formState: { errors } } = form;
+  const { reset, register, watch, setValue, getValues, formState: { errors } } = form;
 
   useEffect(() => {
-    reset({ ...form.getValues(), ...value, ...context });
-    form.trigger();
-  }, [context, value]);
+    if (context?.sku) {
+      setValue("sku", context.sku);
+    }
+  }, [context?.sku, setValue]);
 
   const emitChange = useCallback(async () => {
-    onChange(form.getValues());
-  }, [form, onChange]);
+    onChange(getValues());
+  }, [getValues, onChange]);
 
   const { debounceFn: debouncedEmitChange } = useDebounce(emitChange, 300);
 
   useEffect(() => {
-    const subscription = watch((value, { name }) => {
+    const subscription = watch((_next, { name }) => {
       if (name) {
         debouncedEmitChange();
       }
@@ -70,7 +84,7 @@ export default function ProductPricingWidget({ context, value, onChange, ref }: 
       validate: async () => {
         const isValid = await form.trigger();
         if (isValid) {
-          return { value: form.getValues() };
+          return { value: getValues() };
         }
 
         const formErrors: Record<string, string> = {};
@@ -82,28 +96,34 @@ export default function ProductPricingWidget({ context, value, onChange, ref }: 
 
         return { errors: formErrors };
       },
-      getValues: () => form.getValues(),
+      getValues: () => getValues(),
+      reset: () => {
+        reset(DEFAULT_VALUE);
+        onChange(DEFAULT_VALUE);
+      },
     };
-  }, [form]);
+  }, [form, reset, onChange, getValues]);
 
   return (
     <FieldGroup className="grid gap-4">
+      <input type="hidden" {...register("sku")} />
+      <input type="hidden" {...register("currencyCode")} />
       <div className="grid gap-3">
         <Field data-invalid={!!errors.amount}>
-          <FieldLabel htmlFor={`pricing-amount`}>Amount</FieldLabel>
+          <FieldLabel htmlFor="pricing-amount">Amount</FieldLabel>
           <InputGroup>
             <InputGroupInput
-              id={`pricing-amount`}
+              id="pricing-amount"
               type="number"
+              min={0}
+              step="any"
               {...register("amount", { valueAsNumber: true })}
             />
             <InputGroupAddon align="inline-end">
-              {DEFAULT_CURRENCY}
+              {watch("currencyCode") || DEFAULT_CURRENCY}
             </InputGroupAddon>
           </InputGroup>
-          {errors.amount && (
-            <FieldError errors={[errors.amount]} />
-          )}
+          {errors.amount ? <FieldError errors={[errors.amount]} /> : null}
         </Field>
       </div>
     </FieldGroup>
