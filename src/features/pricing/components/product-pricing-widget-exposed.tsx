@@ -1,6 +1,7 @@
 import { EntryLinkProvider, PlatformProvider } from "@khinemyaezin/seller-ui";
 import {
   PricingCreateContext,
+  PricingPayload,
   PRODUCT_EXTENSION_SLOTS,
   type ExtensionMountProps,
 } from "@khinemyaezin/seller-contracts";
@@ -12,15 +13,25 @@ export type ProductPricingWidgetExposedProps = ExtensionMountProps;
 export default function ProductPricingWidgetExposed({
   groupId,
   slotId = PRODUCT_EXTENSION_SLOTS.CREATE_PRICING,
-  context: initialContext,
+  context,
+  initialValue,
+  onChange,
+  registerHandle,
   platform,
   entryLink,
 }: ProductPricingWidgetExposedProps) {
-  const { context, payload, ref, onChange } = usePricingNewSlot({
-    platform,
+  const {
+    context: slotContext,
+    payload,
+    ref,
+    onChange: handleChange,
+  } = usePricingNewSlot({
     groupId,
     slotId,
-    initialContext: initialContext as PricingCreateContext,
+    context: context as PricingCreateContext | undefined,
+    initialValue: initialValue as PricingPayload | undefined,
+    onChange: onChange as ((value: PricingPayload) => void) | undefined,
+    registerHandle,
   });
 
   if (!entryLink || !groupId) return null;
@@ -30,9 +41,9 @@ export default function ProductPricingWidgetExposed({
       <EntryLinkProvider link={entryLink}>
         <ProductPricingWidget
           ref={ref}
-          context={context}
+          context={slotContext}
           value={payload}
-          onChange={onChange}
+          onChange={handleChange}
         />
       </EntryLinkProvider>
     </PlatformProvider>
