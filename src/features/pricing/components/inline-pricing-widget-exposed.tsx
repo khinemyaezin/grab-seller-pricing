@@ -21,15 +21,25 @@ export type InlinePricingWidgetHandle = {
 export default function InlinePricingWidgetExposed({
   groupId,
   slotId = PRODUCT_EXTENSION_SLOTS.CREATE_PRICING_INLINE,
-  context: initialContext,
+  context,
+  initialValue,
+  onChange,
+  registerHandle,
   platform,
   entryLink,
 }: InlinePricingWidgetExposedProps) {
-  const { context, payload, ref, onChange } = usePricingNewSlot({
-    platform,
+  const {
+    context: slotContext,
+    payload,
+    ref,
+    onChange: handleChange,
+  } = usePricingNewSlot({
     groupId,
     slotId,
-    initialContext: initialContext as PricingCreateContext,
+    context: context as PricingCreateContext | undefined,
+    initialValue: initialValue as PricingPayload | undefined,
+    onChange: onChange as ((value: PricingPayload) => void) | undefined,
+    registerHandle,
   });
   if (!entryLink || !groupId) return null;
 
@@ -38,9 +48,9 @@ export default function InlinePricingWidgetExposed({
       <EntryLinkProvider link={entryLink}>
         <InlinePricingWidget
           ref={ref}
-          context={context}
+          context={slotContext}
           value={payload}
-          onChange={onChange} />
+          onChange={handleChange} />
       </EntryLinkProvider>
     </PlatformProvider>
   );

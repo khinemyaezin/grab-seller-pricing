@@ -1,113 +1,78 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { usePlatform } from "@khinemyaezin/seller-ui";
-import {
-  PRODUCT_EXTENSION_SLOTS,
-  type PricingEditContext,
-  type PricingEditPayload,
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  PricingEditContext,
+  PricingEditPayload,
+  SlotHandle,
 } from "@khinemyaezin/seller-contracts";
 import { useVariantPriceSet } from "./use-variant-price";
 import type { PricingEditWidgetHandle } from "../components/pricing-edit-widget";
+import { useRegisterSlotHandle } from "@khinemyaezin/seller-ui";
 
-export function usePricingEditSlot(
-  groupId: string,
-  slotId: string = PRODUCT_EXTENSION_SLOTS.EDIT_PRICING,
-  propsContext?: PricingEditContext
-) {
-  const platform = usePlatform();
-  const events = platform?.events;
+export type UsePricingEditSlotProps = {
+  groupId: string;
+  slotId?: string;
+  context?: PricingEditContext;
+  initialValue?: PricingEditPayload;
+  onChange?: (value: PricingEditPayload) => void;
+  registerHandle?: (handle: SlotHandle<PricingEditPayload>) => void | (() => void);
+};
+
+export function usePricingEditSlot({
+  context,
+  initialValue,
+  onChange,
+  registerHandle,
+}: UsePricingEditSlotProps) {
   const ref = useRef<PricingEditWidgetHandle>(null);
-  const producerId = useId();
-  const [payload, setPayload] = useState<PricingEditPayload>();
-  const [context, setContext] = useState<PricingEditContext | undefined>(propsContext);
+  const [payload, setPayload] = useState<PricingEditPayload | undefined>(initialValue);
+  const payloadRef = useRef(payload);
+  payloadRef.current = payload;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const seededForVariantRef = useRef<string | undefined>(undefined);
 
   const { price, priceSetId, sku, isLoading } = useVariantPriceSet(context?.variantId);
 
-  useEffect(() => {
-    if (!groupId || !events) return;
+  useRegisterSlotHandle(ref, registerHandle);
 
-    const hydrate = events.getSnapshot("extension:pricing:edit:hydrate:v1", groupId);
-    const updated = events.getSnapshot("extension:pricing:edit:updated:v1", groupId);
-    if (hydrate?.payload || propsContext) {
-      setContext((prev) => ({ ...prev, ...propsContext, ...hydrate?.payload } as PricingEditContext));
-    }
-    if (updated?.payload) {
-      setPayload((prev) => ({ ...prev, ...updated.payload }));
-    }
-
-    const unsubs = [
-      events.subscribe("extension:validate:v1", async (msg) => {
-        if (msg.producerId === producerId) return;
-        if (msg.groupId !== groupId) return;
-        if (msg.slotId && msg.slotId !== slotId) return;
-
-        const validated = await ref.current?.validate();
-
-        events.emit("extension:validated:v1", {
-          producerId,
-          groupId,
-          slotId,
-          valid: validated ? !validated.errors : false,
-          ...(validated?.errors
-            ? { errors: validated.errors, payload: undefined }
-            : { payload: validated?.value }),
-        });
-      }),
-      events.subscribe("extension:pricing:edit:hydrate:v1", (msg) => {
-        if (msg.producerId === producerId) return;
-        if (msg.groupId && msg.groupId !== groupId) return;
-        if (msg.slotId && msg.slotId !== slotId) return;
-        if (!msg.payload) return;
-
-        setContext((prev) => ({ ...prev, ...propsContext, ...msg.payload }));
-        setPayload((prev) => {
-          const current = ref.current?.getValues() ?? prev;
-          return current
-            ? { ...current, sku: msg.payload.sku }
-            : { sku: msg.payload.sku, currencyCode: "USD", amount: 0 };
-        });
-      }),
-      events.subscribe("extension:pricing:edit:updated:v1", (msg) => {
-        if (msg.producerId === producerId) return;
-        if (msg.groupId !== groupId) return;
-        if (!msg.payload) return;
-        setPayload(msg.payload);
-      }),
-    ];
-
-    return () => unsubs.forEach((unsub) => unsub());
-  }, [events, groupId, slotId, producerId]);
+  const contextSku = context?.sku;
+  const variantId = context?.variantId;
 
   useEffect(() => {
-    if (!context?.variantId || !price) return;
-    if (seededForVariantRef.current === context.variantId) return;
-    seededForVariantRef.current = context.variantId;
+    if (contextSku === undefined) return;
+    const prev = payloadRef.current;
+    if (prev?.sku === contextSku) return;
+
+    const current = ref.current?.getValues() ?? prev;
+    if (!current) return;
+
+    const next = { ...current, sku: contextSku };
+    payloadRef.current = next;
+    setPayload(next);
+    onChangeRef.current?.(next);
+  }, [contextSku]);
+
+  const handleChange = useCallback((next: PricingEditPayload) => {
+    payloadRef.current = next;
+    setPayload(next);
+    onChangeRef.current?.(next);
+  }, []);
+
+  useEffect(() => {
+    if (!variantId || !price) return;
+    if (seededForVariantRef.current === variantId) return;
+    seededForVariantRef.current = variantId;
 
     const next: PricingEditPayload = {
-      sku: sku ?? context.sku,
+      sku: sku ?? contextSku ?? "",
       currencyCode: price.currencyCode,
       amount: price.amount,
       ...(priceSetId ? { priceSetId } : {}),
       ...(price.id ? { priceId: price.id } : {}),
     };
 
-    setPayload(next);
-    events?.setState("extension:pricing:edit:updated:v1", {
-      producerId,
-      groupId,
-      slotId,
-      payload: next,
-    });
-  }, [context, price, priceSetId, sku, events, producerId, groupId, slotId]);
+    handleChange(next);
+  }, [variantId, price, priceSetId, sku, contextSku, handleChange]);
 
-  const onChange = useCallback((next: PricingEditPayload) => {
-    events?.setState("extension:pricing:edit:updated:v1", {
-      producerId,
-      groupId,
-      slotId,
-      payload: next,
-    });
-  }, [events, producerId, groupId, slotId]);
-
-  return { context, payload, onChange, ref, isLoading };
+  return { context, payload, onChange: handleChange, ref, isLoading };
 }

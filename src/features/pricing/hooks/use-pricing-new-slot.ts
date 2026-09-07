@@ -1,95 +1,59 @@
-import { PricingCreateContext, PricingPayload, SellerPlatform } from "@khinemyaezin/seller-contracts";
-import { useRef, useId, useState, useEffect } from "react";
+import {
+    PricingCreateContext,
+    PricingPayload,
+    type SlotHandle,
+} from "@khinemyaezin/seller-contracts";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    mergeFromHydrate,
+    useRegisterSlotHandle,
+    type SlotWidgetHandle,
+} from "@khinemyaezin/seller-ui";
 
 export type UsePricingNewSlotProps = {
-    platform?: SellerPlatform;
     groupId: string;
     slotId: string;
-    initialContext: PricingCreateContext
-}
-
-function mergeFromHydrate<T extends object>(
-    prev: T | undefined,
-    current: T | undefined,
-    context: Partial<T> | undefined,
-): T {
-    return { ...prev, ...current, ...context } as T;
-}
-
-export type PricingWidgetHandle = {
-    validate: () => Promise<{
-        value?: PricingPayload;
-        errors?: Record<string, string>;
-    }>;
-    getValues: () => PricingPayload;
+    context?: PricingCreateContext;
+    initialValue?: PricingPayload;
+    onChange?: (value: PricingPayload) => void;
+    registerHandle?: (handle: SlotHandle<PricingPayload>) => void | (() => void);
 };
 
-export function usePricingNewSlot({ platform, groupId, slotId, initialContext }: UsePricingNewSlotProps) {
-    const events = platform?.events;
+export type PricingWidgetHandle = SlotWidgetHandle<PricingPayload>;
+
+export function usePricingNewSlot({
+    context,
+    initialValue,
+    onChange,
+    registerHandle,
+}: UsePricingNewSlotProps) {
     const ref = useRef<PricingWidgetHandle>(null);
-    const producerId = useId();
+    const [payload, setPayload] = useState<PricingPayload | undefined>(initialValue);
+    const payloadRef = useRef(payload);
+    payloadRef.current = payload;
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
 
-    const [context, setContext] = useState<PricingCreateContext | undefined>(
-        () => (initialContext as PricingCreateContext) ??
-            events?.getSnapshot("extension:pricing:new:hydrate:v1", groupId)?.payload
-    );
+    useRegisterSlotHandle(ref, registerHandle);
 
-    const [payload, setPayload] = useState<PricingPayload | undefined>(
-        () => events?.getSnapshot("extension:pricing:new:updated:v1", groupId)?.payload
-    );
+    const sku = context?.sku;
 
     useEffect(() => {
-        if (!groupId) return;
-        if (!events) return;
+        if (sku === undefined) return;
+        const prev = payloadRef.current;
+        if (prev?.sku === sku) return;
 
-        const unsubs = [
-            events.subscribe("extension:validate:v1", async (msg) => {
-                if (msg.producerId === producerId) return;
-                if (msg.groupId !== groupId) return;
-                if (msg.slotId && msg.slotId !== slotId) return;
+        const next = mergeFromHydrate(prev, ref.current?.getValues(), { sku });
+        payloadRef.current = next;
+        setPayload(next);
+        onChangeRef.current?.(next);
+    }, [sku]);
 
-                const validatedPayload = await ref.current?.validate();
+    const handleChange = useCallback((next: PricingPayload) => {
+        payloadRef.current = next;
+        setPayload(next);
+        onChangeRef.current?.(next);
+    }, []);
 
-                events.emit("extension:validated:v1", {
-                    producerId,
-                    groupId,
-                    slotId,
-                    valid: validatedPayload ? !validatedPayload.errors : false,
-                    ...(validatedPayload?.errors
-                        ? { errors: validatedPayload.errors, payload: undefined }
-                        : { payload: validatedPayload?.value }),
-                });
-            }),
-            events.subscribe("extension:pricing:new:hydrate:v1", (msg) => {
-                if (msg.producerId === producerId) return;
-                if (msg.groupId && msg.groupId !== groupId) return;
-                if (msg.slotId && msg.slotId !== slotId) return;
-                if (!msg.payload) return;
-
-                setContext((prev) => ({ ...prev, ...msg.payload }));
-                setPayload((prev) => mergeFromHydrate(prev, ref.current?.getValues(), msg.payload));
-            }),
-
-            events.subscribe("extension:pricing:new:updated:v1", (msg) => {
-                if (msg.producerId === producerId) return;
-                if (msg.groupId !== groupId) return;
-                if (!msg.payload) return;
-
-                setPayload(msg.payload);
-            }),
-        ];
-
-        return () => unsubs.forEach((unsub) => unsub());
-    }, [events, groupId, slotId, producerId]);
-
-    const onChange = (payload: PricingPayload) => {
-        events?.setState("extension:pricing:new:updated:v1", {
-            producerId,
-            groupId,
-            slotId,
-            payload,
-        });
-    };
-
-    return { context, payload, ref, onChange };
+    return { context, payload, ref, onChange: handleChange };
 }
