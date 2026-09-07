@@ -11,15 +11,13 @@ import PricingEditWidget from "./pricing-edit-widget";
 export type PricingEditWidgetExposedProps = ExtensionMountProps;
 
 function PricingEditWidgetBound(props: UsePricingEditSlotProps) {
-  const { context, payload, onChange, ref, isLoading } = usePricingEditSlot(props);
+  const { context, onChange, ref } = usePricingEditSlot(props);
 
   return (
     <PricingEditWidget
       ref={ref}
       context={context}
-      value={payload}
       onChange={onChange}
-      isLoading={isLoading}
     />
   );
 }
