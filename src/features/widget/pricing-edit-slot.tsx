@@ -3,20 +3,15 @@ import type {
   PricingEditPayload,
   SlotWidgetProps,
 } from "@khinemyaezin/seller-contracts";
-import { PricingEditForm } from "../pricing/components/pricing-edit-form";
+import { PricingEditFormContext } from "../pricing/components/pricing-edit-form-context";
 import { PricingFields } from "../pricing/components/pricing-fields";
 
 export function PricingEditSlot(
   props: SlotWidgetProps<PricingEditContext, PricingEditPayload>,
 ) {
   return (
-    <PricingEditForm
-      context={props.context}
-      defaultValues={props.initialValue}
-      onValuesChange={props.onChange}
-      registerHandle={props.registerHandle}
-    >
+    <PricingEditFormContext {...props}>
       <PricingFields />
-    </PricingEditForm>
+    </PricingEditFormContext>
   );
 }
