@@ -25,10 +25,10 @@ export default defineConfig(({ mode }) => {
         },
         exposes: {
           "./Routes": "./src/app/Routes.tsx",
-          "./ProductPricingWidget": "./src/features/pricing/components/product-pricing-widget-exposed.tsx",
-          "./InlinePricingWidget": "./src/features/pricing/components/inline-pricing-widget-exposed.tsx",
-          "./PricingEditWidget": "./src/features/pricing/components/pricing-edit-widget-exposed.tsx",
-          "./InlinePricingEditWidget": "./src/features/pricing/components/inline-pricing-edit-widget-exposed.tsx",
+          "./PricingCreateWidget": "./src/features/widget/pricing-create-widget.tsx",
+          "./InlinePricingCreateWidget": "./src/features/widget/inline-pricing-create-widget.tsx",
+          "./PricingEditWidget": "./src/features/widget/pricing-edit-widget.tsx",
+          "./InlinePricingEditWidget": "./src/features/widget/inline-pricing-edit-widget.tsx",
         },
         shared: {
           "react": { singleton: true, requiredVersion: "19.2.4" },
