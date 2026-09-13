@@ -56,6 +56,7 @@ export function PricingEditFormContext({
     <PricingEditForm
       seed={formSeed}
       contextSku={context?.sku}
+      variantId={variantId}
       onValuesChange={onChange}
       registerHandle={registerHandle}
     >

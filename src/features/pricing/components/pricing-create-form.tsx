@@ -8,8 +8,8 @@ import {
   type PricingPayload,
   type SlotHandle,
 } from "@khinemyaezin/seller-contracts";
-import { useSlotChangeEmitter } from "@khinemyaezin/seller-ui";
-import { useRhfSlotHandle, useRhfValueSource } from "../lib/from-rhf";
+import { useSlotChangeEmitter, useRhfSlotHandle, useRhfValueSource } from "@khinemyaezin/seller-ui";
+import { projectPricingCreate } from "../lib/project-pricing";
 
 const schema = z.fromJSONSchema(PricingPayloadSchema) as z.ZodType<
   PricingPayload,
@@ -52,10 +52,10 @@ export function PricingCreateForm({
   useEffect(() => {
     if (contextSku === undefined) return;
     if (getValues("sku") === contextSku) return;
-    setValue("sku", contextSku, { shouldDirty: true });
+    setValue("sku", contextSku, { shouldDirty: false });
   }, [contextSku, setValue, getValues]);
 
-  const source = useRhfValueSource(form);
+  const source = useRhfValueSource<PricingPayload>(form);
   useSlotChangeEmitter(source, onValuesChange);
 
   const getBaseline = useCallback((): PricingPayload => {
@@ -67,7 +67,12 @@ export function PricingCreateForm({
     };
   }, [contextSku, form.formState.defaultValues]);
 
-  useRhfSlotHandle(form, registerHandle, getBaseline, onValuesChange);
+  useRhfSlotHandle<PricingPayload>(form, {
+    registerHandle,
+    getBaseline,
+    onChange: onValuesChange,
+    project: projectPricingCreate,
+  });
 
   return <FormProvider {...form}>{children}</FormProvider>;
 }

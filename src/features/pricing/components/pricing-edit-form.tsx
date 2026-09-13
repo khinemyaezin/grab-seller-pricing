@@ -7,8 +7,8 @@ import {
   type PricingEditPayload,
   type SlotHandle,
 } from "@khinemyaezin/seller-contracts";
-import { useSlotChangeEmitter } from "@khinemyaezin/seller-ui";
-import { useRhfSlotHandle, useRhfValueSource } from "../lib/from-rhf";
+import { useSlotChangeEmitter, useRhfSlotHandle, useRhfValueSource } from "@khinemyaezin/seller-ui";
+import { projectPricingEdit } from "../lib/project-pricing";
 
 const editSchema = z.fromJSONSchema(PricingEditPayloadSchema) as z.ZodType<
   PricingEditPayload,
@@ -24,6 +24,7 @@ const DEFAULT_EDIT_VALUE: PricingEditPayload = {
 export type PricingEditFormProps = {
   seed?: PricingEditPayload;
   contextSku?: string;
+  variantId?: string;
   onValuesChange?: (values: PricingEditPayload) => void;
   registerHandle?: (handle: SlotHandle<PricingEditPayload>) => void | (() => void);
   children: ReactNode;
@@ -32,12 +33,16 @@ export type PricingEditFormProps = {
 export function PricingEditForm({
   seed,
   contextSku,
+  variantId,
   onValuesChange,
   registerHandle,
   children,
 }: PricingEditFormProps) {
   const form = useForm<PricingEditPayload>({
-    defaultValues: seed ?? DEFAULT_EDIT_VALUE,
+    defaultValues: {
+      ...(seed ?? DEFAULT_EDIT_VALUE),
+      ...(contextSku !== undefined ? { sku: contextSku } : {}),
+    },
     resolver: zodResolver(editSchema),
     mode: "onChange",
   });
@@ -46,7 +51,7 @@ export function PricingEditForm({
 
    useEffect(() => {
     if (contextSku !== undefined && getValues("sku") !== contextSku) {
-      setValue("sku", contextSku, { shouldDirty: true });
+      setValue("sku", contextSku, { shouldDirty: false });
     }
   }, [contextSku, setValue, getValues]);
 
@@ -54,9 +59,14 @@ export function PricingEditForm({
     return seed ?? DEFAULT_EDIT_VALUE;
   }, [seed]);
 
-  useRhfSlotHandle(form, registerHandle, getBaseline, onValuesChange);
+  useRhfSlotHandle<PricingEditPayload>(form, {
+    registerHandle,
+    getBaseline,
+    onChange: onValuesChange,
+    project: (value) => projectPricingEdit(value, variantId),
+  });
 
-  const source = useRhfValueSource(form);
+  const source = useRhfValueSource<PricingEditPayload>(form);
   useSlotChangeEmitter(source, onValuesChange);
 
   return (
