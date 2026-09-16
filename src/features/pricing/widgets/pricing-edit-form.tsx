@@ -47,9 +47,16 @@ export function PricingEditForm({
     mode: "onChange",
   });
 
-  const { setValue, getValues } = form;
+  const { reset, setValue, getValues } = form;
 
-   useEffect(() => {
+  useEffect(() => {
+    reset({
+      ...(seed ?? DEFAULT_EDIT_VALUE),
+      ...(contextSku !== undefined ? { sku: contextSku } : {}),
+    });
+  }, [contextSku, reset, seed]);
+
+  useEffect(() => {
     if (contextSku !== undefined && getValues("sku") !== contextSku) {
       setValue("sku", contextSku, { shouldDirty: false });
     }
