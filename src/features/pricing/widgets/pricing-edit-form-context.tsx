@@ -1,11 +1,11 @@
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type {
   PricingEditContext,
   PricingEditPayload,
   SlotWidgetProps,
 } from "@khinemyaezin/seller-contracts";
-import { useVariantPriceSet } from "../hooks/use-variant-price";
 import { PricingEditForm } from "./pricing-edit-form";
+import { usePricingEdit } from "./use-pricing-edit";
 
 export type PricingEditFormContextProps = SlotWidgetProps<
   PricingEditContext,
@@ -24,26 +24,17 @@ export function PricingEditFormContext({
   children,
 }: PricingEditFormContextProps) {
   const variantId = context?.variantId?.trim();
-  const { price, priceSetId, sku, isLoading } = useVariantPriceSet(variantId);
+  const { seed, isLoading, isError } = usePricingEdit({
+    variantId,
+    contextSku: context?.sku,
+    initialValue,
+  });
 
-  const formSeed: PricingEditPayload = useMemo(() => {
-    if (initialValue) {
-      return {
-        ...initialValue,
-        priceSetId: initialValue.priceSetId ?? priceSetId,
-        priceId: initialValue.priceId ?? price?.id,
-      };
-    }
-    return {
-      sku: context?.sku ?? sku ?? "",
-      currencyCode: price?.currencyCode || "USD",
-      amount: price?.amount ?? 0,
-      priceSetId,
-      priceId: price?.id,
-    };
-  }, [variantId, price, priceSetId, context?.sku, sku]);
+  if (isError) {
+    return <p className="text-sm text-muted-foreground">Failed to load price.</p>;
+  }
 
-  if (isLoading && !initialValue && Boolean(variantId)) {
+  if (isLoading) {
     return (
       loadingFallback ?? (
         <p className="text-sm text-muted-foreground">Loading price…</p>
@@ -51,10 +42,9 @@ export function PricingEditFormContext({
     );
   }
 
-  
   return (
     <PricingEditForm
-      seed={formSeed}
+      seed={seed}
       contextSku={context?.sku}
       variantId={variantId}
       onValuesChange={onChange}

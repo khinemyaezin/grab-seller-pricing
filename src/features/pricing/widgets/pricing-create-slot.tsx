@@ -3,9 +3,9 @@ import type {
   PricingPayload,
   SlotWidgetProps,
 } from "@khinemyaezin/seller-contracts";
-import { PricingCreateForm } from "../pricing/components/pricing-create-form";
-import { PricingFields } from "../pricing/components/pricing-fields";
-import { InlinePricingFields } from "../pricing/components/inline-pricing-fields";
+import { InlinePricingFields } from "@/features/pricing/ui/inline-pricing-fields";
+import { PricingFields } from "@/features/pricing/ui/pricing-fields";
+import { PricingCreateForm } from "./pricing-create-form";
 
 export function PricingCreateSlot(
   props: SlotWidgetProps<PricingCreateContext, PricingPayload>,
